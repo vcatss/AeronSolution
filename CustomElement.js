@@ -2,13 +2,16 @@ class StyleInjector extends HTMLElement {
   connectedCallback() {
     if (document.getElementById("my-injected-style")) return;
     const style = document.createElement("style");
-    console.log('ccc');
     style.id = "my-injected-style";
     style.textContent = `
-      .my-class { color: red; }
-      [id^="comp-"]:hover { opacity: 0.9; }
+      /* Test: nếu thấy viền đỏ quanh trang là thành công */
+      body { outline: 5px solid red !important; }
+
+      /* CSS của bạn viết tiếp ở dưới */
     `;
     document.head.appendChild(style);
   }
 }
-customElements.define("style-injector", StyleInjector);
+if (!customElements.get("style-injector")) {
+  customElements.define("style-injector", StyleInjector);
+}
