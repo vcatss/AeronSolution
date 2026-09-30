@@ -1,6 +1,7 @@
 class StyleInjector extends HTMLElement {
   connectedCallback() {
     if (document.getElementById("my-injected-style")) return;
+    console.log('vcat')
     const style = document.createElement("style");
     style.id = "my-injected-style";
     style.textContent = `
