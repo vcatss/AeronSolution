@@ -132,43 +132,6 @@ const CSS_TEXT = `
     left: auto !important;
 }
 
-.gallery-horizontal-scroll .item-link-wrapper,
-.gallery-horizontal-scroll .gallery-item-container {
-    cursor: default !important;
-}
-
-/* Khoảng cách giữa các logo (chỉnh số này để tăng/giảm) */
-.gallery-horizontal-scroll [data-hook="group-view"] {
-    margin-left: 20px !important;
-    margin-right: 20px !important;
-}
-
-/* Logo thứ 2 to gấp đôi */
-.gallery-horizontal-scroll [data-hook="group-view"]:nth-child(2) {
-    width: 480px !important;
-    min-width: 480px !important;
-    max-width: 480px !important;
-
-    height: 330px !important;
-    min-height: 330px !important;
-    max-height: 330px !important;
-}
-
-.gallery-horizontal-scroll [data-hook="group-view"]:nth-child(2) .item-link-wrapper {
-    width: 480px !important;
-    height: 330px !important;
-}
-
-.gallery-horizontal-scroll [data-hook="group-view"]:nth-child(2) .gallery-item-container {
-    width: 440px !important;
-    min-width: 440px !important;
-    max-width: 440px !important;
-
-    height: 280px !important;
-    min-height: 280px !important;
-    max-height: 280px !important;
-}
-
 /* Hover không làm lệch logo */
 .gallery-horizontal-scroll .shrink-on-hover:hover {
     transform: none !important;
@@ -182,17 +145,13 @@ const CSS_TEXT = `
   style.textContent = CSS_TEXT;
   document.head.appendChild(style);
   console.log("style-injector: CSS injected");
-
-  // Chặn click vào .gallery-item-container (và link bao quanh nó)
-  function blockClick(e) {
-    var t = e.target;
-    if (t && t.closest && t.closest(".gallery-item-container")) {
+  ["click", "auxclick"].forEach(t =>
+  document.addEventListener(t, e => {
+    if (e.target.closest(".gallery-item-container")) {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
     }
-  }
-  ["click", "auxclick"].forEach(function (type) {
-    document.addEventListener(type, blockClick, true);
-  });
+  }, true)
+);
 })();
