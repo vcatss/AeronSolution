@@ -35,7 +35,9 @@
     justify-content: center !important;
 }
 
+/* Mỗi logo = 1 thẻ (card) bằng nhau, có viền bo góc */
 .gallery-horizontal-scroll .gallery-item-container {
+    box-sizing: border-box !important;
     width: 220px !important;
     min-width: 220px !important;
     max-width: 220px !important;
@@ -50,6 +52,10 @@
     align-items: center !important;
     justify-content: center !important;
     overflow: hidden !important;
+
+    background: #ffffff !important;
+    border: 1px solid #cfe3f3 !important;
+    border-radius: 12px !important;
 }
 
 .gallery-horizontal-scroll .gallery-item-wrapper {
@@ -93,8 +99,8 @@
     left: auto !important;
     width: auto !important;
     height: auto !important;
-    max-width: 85% !important;
-    max-height: 75% !important;
+    max-width: 80% !important;
+    max-height: 70% !important;
     min-width: 0 !important;
     min-height: 0 !important;
     margin: 0 auto !important;
