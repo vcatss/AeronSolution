@@ -19,7 +19,7 @@
 
   const HOST_ID = 'aeronsolution-clients-grid';
   const POLL_MS = 200;        // kiểm tra lại mỗi 200ms
-  const WAIT_MS = 20000;      // chờ tối đa 20s
+  const WAIT_MS = 60000;      // chờ tối đa 60s
   const GALLERY_GRACE_MS = 8000; // nếu không thấy .pro-gallery sau 8s thì vẫn chèn
 
   /* Danh sách logo lấy từ section gốc ------------------------------- */
@@ -374,8 +374,11 @@
 
   /* -----------------------------------------------------------------
    * Chờ DOM / Wix render xong rồi mới chạy
+   * Không phụ thuộc DOMContentLoaded: chạy được cả khi script nằm trong
+   * <head>, được inject ở document-start, hoặc render kiểu SPA.
    * ---------------------------------------------------------------- */
   let pollTimer = null;
+  let observer = null;
 
   function init(allowNoGallery) {
     if (document.getElementById(HOST_ID)) return true;
@@ -396,49 +399,70 @@
     return !!document.getElementById(HOST_ID);
   }
 
+  function stopWatching() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (observer) { observer.disconnect(); observer = null; }
+  }
+
   function waitAndInit() {
     if (init()) return;
 
     let elapsed = 0;
+
+    /* 1) thử lại theo nhịp */
     clearInterval(pollTimer);
     pollTimer = setInterval(() => {
       elapsed += POLL_MS;
 
       if (init(elapsed >= GALLERY_GRACE_MS)) {
-        clearInterval(pollTimer);
-        pollTimer = null;
+        stopWatching();
         return;
       }
 
       if (elapsed >= WAIT_MS) {
-        clearInterval(pollTimer);
-        pollTimer = null;
+        stopWatching();
         if (!document.getElementById(HOST_ID)) {
-          console.warn('[clients-grid] Sau 20s vẫn không thấy section "Our Clients & Partners".');
+          console.warn('[clients-grid] Không tìm thấy section "Our Clients & Partners" sau ' +
+            (WAIT_MS / 1000) + 's.');
         }
       }
     }, POLL_MS);
+
+    /* 2) phản ứng ngay khi section được render (SPA) */
+    let scheduled = false;
+    observer = new MutationObserver(() => {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(() => {
+        scheduled = false;
+        if (init(elapsed >= GALLERY_GRACE_MS)) stopWatching();
+      }, 150);
+    });
+    observer.observe(document, { childList: true, subtree: true });
   }
 
   function boot() {
     if (document.getElementById(HOST_ID)) return;
+    if (init()) return;
+
+    console.info('[clients-grid] Script chạy lúc readyState="' +
+      document.readyState + '" — đang chờ DOM/section…');
     waitAndInit();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
-  } else {
-    boot();
-  }
+  /* chạy ngay, không đợi event nào */
+  boot();
 
   /* Gọi lại thủ công nếu site SPA re-render làm mất slider:
      window.AeronClientsGrid.mount()  */
   window.AeronClientsGrid = {
     mount() {
+      stopWatching();
       document.getElementById(HOST_ID)?.remove();
       return waitAndInit();
     },
     unmount() {
+      stopWatching();
       document.getElementById(HOST_ID)?.remove();
     }
   };
