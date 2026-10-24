@@ -18,6 +18,7 @@
   'use strict';
 
   const HOST_ID = 'aeronsolution-clients-grid';
+  const STYLE_ID = 'acp-hide-wix-gallery';
   const POLL_MS = 200;        // kiểm tra lại mỗi 200ms
   const WAIT_MS = 60000;      // chờ tối đa 60s
   const GALLERY_GRACE_MS = 8000; // nếu không thấy .pro-gallery sau 8s thì vẫn chèn
@@ -99,6 +100,7 @@
         galleryRoot = galleryRoot.parentElement;
       }
       galleryRoot.style.setProperty('display', 'none', 'important');
+      ensureHideRule(galleryRoot);
     }
     section.querySelectorAll('.pro-gallery').forEach((g) => {
       g.style.setProperty('display', 'none', 'important');
@@ -370,6 +372,9 @@
     });
 
     console.info(`[clients-grid] Đã chèn slider logo (${LOGOS.length} logo).`);
+
+    /* 5) Tự phục hồi nếu Wix re-render làm mất slider -------------- */
+    startKeepAlive();
   }
 
   /* -----------------------------------------------------------------
@@ -379,6 +384,66 @@
    * ---------------------------------------------------------------- */
   let pollTimer = null;
   let observer = null;
+  let keepAliveTimer = null;
+
+  /* Ẩn gallery Wix bằng rule trong <head>: rule này sống sót qua các
+     lần Wix re-render (style inline trên node có thể bị React ghi đè). */
+  function ensureHideRule(root) {
+    if (!root || !root.id) return;
+
+    const sel = '#' + (window.CSS && CSS.escape ? CSS.escape(root.id) : root.id);
+    let style = document.getElementById(STYLE_ID);
+    if (!style) {
+      style = document.createElement('style');
+      style.id = STYLE_ID;
+      (document.head || document.documentElement).appendChild(style);
+    }
+    if (!style.textContent.includes(sel)) {
+      style.textContent += sel + '{display:none!important}\n';
+    }
+  }
+
+  /* Kiểm tra định kỳ: host bị Wix xoá thì dựng lại,
+     gallery Wix lộ ra thì ẩn lại. */
+  function startKeepAlive() {
+    if (keepAliveTimer) return;
+
+    keepAliveTimer = setInterval(() => {
+      const host = document.getElementById(HOST_ID);
+
+      if (!host) {
+        stopWatching();
+        if (findHeading()) waitAndInit();
+        return;
+      }
+
+      const section = host.closest('section');
+      const gallery = (section || document).querySelector('.pro-gallery');
+
+      /* Wix re-render có thể ghi đè lại chiều cao cố định của section */
+      if (section) {
+        section.style.setProperty('height', 'auto', 'important');
+        section.style.setProperty('min-height', '0', 'important');
+        section.style.setProperty('padding-bottom', '50px', 'important');
+      }
+      if (host.parentElement) {
+        host.parentElement.style.setProperty('height', 'auto', 'important');
+        host.parentElement.style.setProperty('grid-template-rows', 'auto', 'important');
+      }
+
+      if (!gallery) return;
+
+      const parent = host.parentElement;
+      let root = gallery;
+      while (root.parentElement && root.parentElement !== parent) {
+        root = root.parentElement;
+      }
+      if (root.parentElement === parent && root !== host) {
+        root.style.setProperty('display', 'none', 'important');
+        ensureHideRule(root);
+      }
+    }, 1000);
+  }
 
   function init(allowNoGallery) {
     if (document.getElementById(HOST_ID)) return true;
@@ -463,6 +528,7 @@
     },
     unmount() {
       stopWatching();
+      if (keepAliveTimer) { clearInterval(keepAliveTimer); keepAliveTimer = null; }
       document.getElementById(HOST_ID)?.remove();
     }
   };
