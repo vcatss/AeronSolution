@@ -1,140 +1,382 @@
-(function () {
-  // Chặn chạy lần 2 nếu script bị nạp trùng
-  if (window.__styleInjectorLoaded) return;
-  window.__styleInjectorLoaded = true;
+/* =====================================================================
+ * AERON SOLUTION – "Our Clients & Partners" logo slider
+ * ---------------------------------------------------------------------
+ * - Tự tìm section "Our Clients & Partners" trên trang
+ * - Ẩn gallery / slider cũ của Wix
+ * - Chèn slider logo mới: hiển thị 4 card / lần, có nút prev-next,
+ *   kéo chuột / vuốt cảm ứng, snap từng card
+ * - Toàn bộ CSS nằm trong Shadow DOM => không bị CSS cũ ảnh hưởng
+ *   và không ảnh hưởng ngược ra ngoài
+ *
+ * Cách dùng: paste vào Console, hoặc đặt trong HTML Embed / Velo.
+ * Chạy lại nhiều lần được (script tự dọn bản cũ).
+ * ===================================================================== */
+(() => {
+  'use strict';
 
-  console.log("style-injector loaded");
+  const HOST_ID = 'aeronsolution-clients-grid';
 
-  const CSS_TEXT = `
-/* ===== WIX LOGO GALLERY ===== */
-.gallery-horizontal-scroll {
-    width: 100% !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-}
+  /* Danh sách logo lấy từ section gốc ------------------------------- */
+  const LOGOS = [
+    {
+      name: 'Organo',
+      src: 'https://static.wixstatic.com/media/fc7d16_442edf951df24f41a67f277e961e3802~mv2.png'
+    },
+    {
+      name: 'Atlas',
+      src: 'https://static.wixstatic.com/media/fc7d16_3529cb7a6ac94f2b813ee0c7e77e5494~mv2.png'
+    },
+    {
+      name: 'Daniel',
+      src: 'https://static.wixstatic.com/media/fc7d16_26f03c7d893a42e7896b419f90acace9~mv2.png'
+    },
+    {
+      name: 'Techvalue Norway',
+      src: 'https://static.wixstatic.com/media/fc7d16_6d56dd10d3a64b8882e6b5ef812b6451~mv2.jpg'
+    },
+    {
+      name: 'PTSC M&C',
+      src: 'https://static.wixstatic.com/media/fc7d16_82dcd969704b475090210fb31adb2eb7~mv2.jpg'
+    },
+    {
+      name: 'NOV',
+      src: 'https://static.wixstatic.com/media/fc7d16_9bddf5b7641940389a9771e11cd2075f~mv2.jpg'
+    },
+    {
+      name: 'Star Global',
+      src: 'https://static.wixstatic.com/media/fc7d16_c217e568d4bd4486ae283caf7070dcc3~mv2.jpg/v1/fit/w_960,h_960,q_90,enc_avif,quality_auto/fc7d16_c217e568d4bd4486ae283caf7070dcc3~mv2.jpg'
+    },
+    {
+      name: 'Hoang Tam Consultants',
+      src: 'https://static.wixstatic.com/media/fc7d16_d9904dc26f8a487ea8b07f083f9e7500~mv2.png/v1/fit/w_1400,h_275,q_90,enc_avif,quality_auto/fc7d16_d9904dc26f8a487ea8b07f083f9e7500~mv2.png'
+    },
+    {
+      name: 'TechniCo Academy',
+      src: 'https://static.wixstatic.com/media/fc7d16_3a4d7c3b7f084c06aa032b684f03807e~mv2.png/v1/fit/w_1400,h_470,q_90,enc_avif,quality_auto/fc7d16_3a4d7c3b7f084c06aa032b684f03807e~mv2.png'
+    },
+    {
+      name: 'E2CS',
+      src: 'https://static.wixstatic.com/media/fc7d16_a4948552e0cf44a0a1fc29df67edc039~mv2.png'
+    },
+    {
+      name: 'Getabec',
+      src: 'https://static.wixstatic.com/media/fc7d16_6152109745624499a1bed675ef42d4e8~mv2.png'
+    }
+  ];
 
-.gallery-horizontal-scroll-inner {
-    display: flex !important;
-    align-items: center !important;
-}
+  /* 0) Dọn bản cũ nếu chạy lại ------------------------------------- */
+  document.getElementById(HOST_ID)?.remove();
 
-.gallery-horizontal-scroll [data-hook="group-view"] {
-    width: 240px !important;
-    min-width: 240px !important;
-    max-width: 240px !important;
-    height: 165px !important;
-    min-height: 165px !important;
-    max-height: 165px !important;
-}
+  const normalize = (t) => (t || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
-.gallery-horizontal-scroll .item-link-wrapper {
-    width: 240px !important;
-    height: 165px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
+  /* 1) Tìm tiêu đề "Our Clients & Partners" ------------------------ */
+  const heading = Array.from(
+    document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, div, span')
+  ).find(
+    (el) => el.children.length === 0 &&
+      normalize(el.textContent) === 'our clients & partners'
+  );
 
-/* Mỗi logo = 1 thẻ (card) bằng nhau, có viền bo góc */
-.gallery-horizontal-scroll .gallery-item-container {
-    box-sizing: border-box !important;
-    width: 220px !important;
-    min-width: 220px !important;
-    max-width: 220px !important;
-    height: 140px !important;
-    min-height: 140px !important;
-    max-height: 140px !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    position: relative !important;
-    inset: auto !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    overflow: hidden !important;
-
-    background: #ffffff !important;
-    border: 1px solid #cfe3f3 !important;
-    border-radius: 12px !important;
-}
-
-.gallery-horizontal-scroll .gallery-item-wrapper {
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-.gallery-horizontal-scroll .gallery-item-content {
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: relative !important;
-    overflow: hidden !important;
-}
-
-.gallery-horizontal-scroll picture {
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: relative !important;
-}
-
-.gallery-horizontal-scroll img[data-hook="gallery-item-image-img"] {
-    position: static !important;
-    top: auto !important;
-    right: auto !important;
-    bottom: auto !important;
-    left: auto !important;
-    width: auto !important;
-    height: auto !important;
-    max-width: 80% !important;
-    max-height: 70% !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    margin: 0 auto !important;
-    padding: 0 !important;
-    display: block !important;
-    object-fit: contain !important;
-    object-position: center center !important;
-    transform: none !important;
-}
-
-.gallery-horizontal-scroll .shrink-on-hover:hover {
-    transform: none !important;
-}
-`;
-
-  if (!document.getElementById("my-injected-style")) {
-    const style = document.createElement("style");
-    style.id = "my-injected-style";
-    style.textContent = CSS_TEXT;
-    document.head.appendChild(style);
-    console.log("style-injector: CSS injected");
+  if (!heading) {
+    console.warn('[clients-grid] Không tìm thấy tiêu đề "Our Clients & Partners".');
+    return;
   }
 
-  ["click", "auxclick"].forEach(t =>
-    document.addEventListener(
-      t,
-      e => {
-        if (e.target.closest(".gallery-item-container")) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-        }
-      },
-      true
-    )
-  );
+  const section =
+    heading.closest('section') ||
+    heading.closest('[id^="comp-"]')?.parentElement ||
+    document.body;
+
+  /* 2) Ẩn gallery / slider cũ của Wix ------------------------------ */
+  const gallery = section.querySelector('.pro-gallery');
+
+  const commonAncestor = (a, b) => {
+    let p = a;
+    while (p && !p.contains(b)) p = p.parentElement;
+    return p;
+  };
+
+  const container = gallery ? commonAncestor(gallery, heading) : heading.parentElement;
+
+  if (gallery && container) {
+    let galleryRoot = gallery;
+    while (galleryRoot.parentElement && galleryRoot.parentElement !== container) {
+      galleryRoot = galleryRoot.parentElement;
+    }
+    galleryRoot.style.setProperty('display', 'none', 'important');
+  }
+  section.querySelectorAll('.pro-gallery').forEach((g) => {
+    g.style.setProperty('display', 'none', 'important');
+  });
+
+  /* 3) Cho section tự giãn theo nội dung mới ----------------------- */
+  if (container) {
+    container.style.setProperty('height', 'auto', 'important');
+    container.style.setProperty('grid-template-rows', 'auto', 'important');
+  }
+  section.style.setProperty('height', 'auto', 'important');
+  section.style.setProperty('min-height', '0', 'important');
+  section.style.setProperty('padding-bottom', '50px', 'important');
+
+  /* 4) Tạo host + Shadow DOM --------------------------------------- */
+  const host = document.createElement('div');
+  host.id = HOST_ID;
+  host.style.cssText = [
+    'all: initial',
+    'display: block',
+    'position: relative',
+    'z-index: 1',
+    'grid-column: 1 / -1',
+    'width: 100%',
+    'min-width: 0',
+    'max-width: 100%',
+    'margin: 28px 0 0 0',
+    'padding: 0',
+    'box-sizing: border-box'
+  ].join(';');
+
+  const shadow = host.attachShadow({ mode: 'open' });
+
+  const cards = LOGOS.map((logo) => {
+    const name = logo.name
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;');
+    return `
+          <figure class="acp-card" role="listitem">
+            <img src="${logo.src}" alt="${name}" loading="lazy" decoding="async" draggable="false">
+          </figure>`;
+  }).join('');
+
+  shadow.innerHTML = `
+    <style>
+      /* --- reset riêng, không phụ thuộc CSS bên ngoài --- */
+      :host {
+        all: initial;
+        display: block;
+        box-sizing: border-box;
+        --acp-cols: 4;
+        --acp-gap: 16px;
+        --acp-line: #d6e4f5;
+        --acp-line-hover: #b7d0ee;
+        --acp-ink: #33506f;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      }
+      *, *::before, *::after { box-sizing: border-box; }
+
+      /* --- khung slider + nút 2 bên --- */
+      .acp-shell {
+        position: relative;
+      }
+
+      .acp-nav {
+        position: absolute;
+        top: 50%;
+        z-index: 2;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        margin: 0;
+        background: #ffffff;
+        color: var(--acp-ink);
+        border: 1px solid var(--acp-line);
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(16, 42, 82, 0.12);
+        cursor: pointer;
+        transition: background .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, opacity .18s ease;
+      }
+      .acp-prev { left: -19px; }
+      .acp-next { right: -19px; }
+      .acp-nav:hover:not(:disabled) {
+        background: #f2f7fe;
+        border-color: var(--acp-line-hover);
+        box-shadow: 0 4px 14px rgba(16, 42, 82, 0.18);
+      }
+      .acp-nav:focus-visible {
+        outline: 2px solid #4a90d9;
+        outline-offset: 2px;
+      }
+      .acp-nav:disabled {
+        opacity: .35;
+        cursor: default;
+      }
+      .acp-nav svg { display: block; width: 18px; height: 18px; }
+
+      /* --- khung slider --- */
+      .acp-viewport {
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;          /* Firefox */
+        -ms-overflow-style: none;       /* IE / Edge cũ */
+        cursor: grab;
+      }
+      .acp-viewport::-webkit-scrollbar { display: none; }
+      .acp-viewport.dragging { cursor: grabbing; scroll-snap-type: none; }
+      .acp-viewport.dragging .acp-card { pointer-events: none; }
+
+      .acp-track {
+        display: flex;
+        gap: var(--acp-gap);
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      /* --- card --- */
+      .acp-card {
+        flex: 0 0 calc((100% - (var(--acp-cols) - 1) * var(--acp-gap)) / var(--acp-cols));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        aspect-ratio: 16 / 10;
+        margin: 0;
+        padding: 24px;
+        background: #ffffff;
+        border: 1px solid var(--acp-line);
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(16, 42, 82, 0.04);
+        overflow: hidden;
+        scroll-snap-align: start;
+        transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+        user-select: none;
+      }
+      .acp-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--acp-line-hover);
+        box-shadow: 0 10px 24px rgba(16, 42, 82, 0.10);
+      }
+      .acp-card img {
+        display: block;
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        object-position: center;
+        filter: none;
+        transform: none;
+        -webkit-user-drag: none;
+      }
+
+      /* --- responsive --- */
+      @media (max-width: 1200px) { :host { --acp-cols: 3; } }
+      @media (max-width: 820px) {
+        :host { --acp-cols: 2; --acp-gap: 12px; }
+        .acp-card { aspect-ratio: 4 / 3; padding: 18px; border-radius: 10px; }
+        .acp-nav { width: 34px; height: 34px; }
+        .acp-prev { left: -17px; }
+        .acp-next { right: -17px; }
+      }
+      @media (max-width: 460px) { :host { --acp-cols: 1; } }
+      @media (prefers-reduced-motion: reduce) {
+        .acp-card { transition: none; }
+        .acp-card:hover { transform: none; }
+      }
+    </style>
+
+    <div class="acp-shell">
+      <button class="acp-nav acp-prev" type="button" aria-label="Previous logos" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+      <button class="acp-nav acp-next" type="button" aria-label="Next logos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 6l6 6-6 6"/>
+        </svg>
+      </button>
+
+      <div class="acp-viewport" tabindex="0"
+           role="region" aria-roledescription="carousel" aria-label="Clients and partners logos">
+        <div class="acp-track" role="list">
+          ${cards}
+        </div>
+      </div>
+    </div>
+  `;
+
+  container.appendChild(host);
+
+  /* 5) Hành vi slider ---------------------------------------------- */
+  const viewport = shadow.querySelector('.acp-viewport');
+  const track = shadow.querySelector('.acp-track');
+  const prevBtn = shadow.querySelector('.acp-prev');
+  const nextBtn = shadow.querySelector('.acp-next');
+
+  const cardAmount = LOGOS.length;
+
+  const getStep = () => {
+    const card = track.firstElementChild;
+    const gap = parseFloat(getComputedStyle(track).columnGap) || 16;
+    const perView = Math.max(1, Math.round(
+      (viewport.clientWidth + gap) / (card.getBoundingClientRect().width + gap)
+    ));
+    return card.getBoundingClientRect().width * perView + gap * perView;
+  };
+
+  const updateButtons = () => {
+    const max = viewport.scrollWidth - viewport.clientWidth;
+    prevBtn.disabled = viewport.scrollLeft <= 2;
+    nextBtn.disabled = viewport.scrollLeft >= max - 2;
+  };
+
+  const scrollPage = (dir) => {
+    viewport.scrollBy({ left: dir * getStep(), behavior: 'smooth' });
+  };
+
+  prevBtn.addEventListener('click', () => scrollPage(-1));
+  nextBtn.addEventListener('click', () => scrollPage(1));
+
+  viewport.addEventListener('scroll', updateButtons, { passive: true });
+  window.addEventListener('resize', updateButtons);
+  updateButtons();
+
+  /* kéo bằng chuột (touch đã có scroll native) */
+  let dragging = false;
+  let startX = 0;
+  let startScroll = 0;
+
+  viewport.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    dragging = true;
+    startX = e.clientX;
+    startScroll = viewport.scrollLeft;
+    viewport.classList.add('dragging');
+    viewport.setPointerCapture(e.pointerId);
+  });
+
+  viewport.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    viewport.scrollLeft = startScroll - (e.clientX - startX);
+  });
+
+  const endDrag = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    viewport.classList.remove('dragging');
+    if (e && viewport.hasPointerCapture?.(e.pointerId)) {
+      viewport.releasePointerCapture(e.pointerId);
+    }
+    updateButtons();
+  };
+
+  viewport.addEventListener('pointerup', endDrag);
+  viewport.addEventListener('pointercancel', endDrag);
+  viewport.addEventListener('pointerleave', (e) => { if (dragging) endDrag(e); });
+
+  /* bàn phím: ← → */
+  viewport.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); scrollPage(-1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); scrollPage(1); }
+  });
+
+  console.info(`[clients-grid] Đã chèn slider logo mới (${cardAmount} logo, Shadow DOM).`);
 })();
