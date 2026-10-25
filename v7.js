@@ -23,6 +23,12 @@
   const WAIT_MS = 60000;      // chờ tối đa 60s
   const GALLERY_GRACE_MS = 8000; // nếu không thấy .pro-gallery sau 8s thì vẫn chèn
 
+  /* ================== CẤU HÌNH ================== */
+  // Số logo hiển thị cùng lúc trên desktop (PC).
+  // Mobile/tablet vẫn tự động giảm: <=1200px tối đa 3, <=820px tối đa 2, <=460px 1.
+  const VISIBLE_COUNT = 6;
+  /* ============================================== */
+
   /* Danh sách logo lấy từ section gốc ------------------------------- */
   const LOGOS = [
     {
@@ -152,7 +158,7 @@
           all: initial;
           display: block;
           box-sizing: border-box;
-          --acp-cols: 4;
+          --acp-cols: ${VISIBLE_COUNT};
           --acp-gap: 16px;
           --acp-line: #d6e4f5;
           --acp-line-hover: #b7d0ee;
@@ -260,15 +266,15 @@
         }
 
         /* --- responsive --- */
-        @media (max-width: 1200px) { :host { --acp-cols: 3; } }
+        @media (max-width: 1200px) { :host { --acp-cols: min(${VISIBLE_COUNT}, 3); } }
         @media (max-width: 820px) {
-          :host { --acp-cols: 2; --acp-gap: 12px; }
+          :host { --acp-cols: min(${VISIBLE_COUNT}, 2); --acp-gap: 12px; }
           .acp-card { aspect-ratio: 4 / 3; padding: 18px; border-radius: 10px; }
           .acp-nav { width: 34px; height: 34px; }
           .acp-prev { left: -17px; }
           .acp-next { right: -17px; }
         }
-        @media (max-width: 460px) { :host { --acp-cols: 1; } }
+        @media (max-width: 460px) { :host { --acp-cols: min(${VISIBLE_COUNT}, 1); } }
         @media (prefers-reduced-motion: reduce) {
           .acp-card { transition: none; }
           .acp-card:hover { transform: none; }
