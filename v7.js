@@ -31,7 +31,7 @@
   /* ================== CẤU HÌNH ================== */
   // Số logo hiển thị cùng lúc trên desktop (PC).
   // Mobile/tablet vẫn tự động giảm: <=1200px tối đa 3, <=820px tối đa 2, <=460px 1.
-  const VISIBLE_COUNT = 4;
+  const VISIBLE_COUNT = 6;
   /* ============================================== */
 
   /* Danh sách logo lấy từ section gốc ------------------------------- */
