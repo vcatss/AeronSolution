@@ -13,9 +13,14 @@
  *   <script src="clients-partners-grid.js" defer></script>
  * hoặc paste vào Console / HTML Embed / Velo.
  * Chạy lại nhiều lần được (không tạo bản trùng).
+ *
+ * CẬP NHẬT LẦN CUỐI: 2026-10-26 15:05
  * ===================================================================== */
 (() => {
   'use strict';
+
+  /* Ngày giờ cập nhật file — xem trong Console để biết đã lấy bản mới chưa */
+  const UPDATED_AT = '2026-10-26 15:05';
 
   const HOST_ID = 'aeronsolution-clients-grid';
   const STYLE_ID = 'acp-hide-wix-gallery';
@@ -26,7 +31,7 @@
   /* ================== CẤU HÌNH ================== */
   // Số logo hiển thị cùng lúc trên desktop (PC).
   // Mobile/tablet vẫn tự động giảm: <=1200px tối đa 3, <=820px tối đa 2, <=460px 1.
-  const VISIBLE_COUNT = 6;
+  const VISIBLE_COUNT = 4;
   /* ============================================== */
 
   /* Danh sách logo lấy từ section gốc ------------------------------- */
@@ -91,20 +96,16 @@
   function build(heading, section, gallery) {
     if (document.getElementById(HOST_ID)) return;
 
-    /* 1) Ẩn gallery / slider cũ của Wix ----------------------------- */
-    const commonAncestor = (a, b) => {
-      let p = a;
-      while (p && !p.contains(b)) p = p.parentElement;
-      return p;
-    };
+    /* 1) Ẩn gallery / slider cũ của Wix -----------------------------
+     * Chỉ ẩn đúng component gallery (id comp-*), KHÔNG leo lên wrapper
+     * chung — wrapper đó có thể chứa cả tiêu đề nên rất dễ "xóa" title
+     * mỗi khi Wix re-render/scroll. */
+    const galleryRoot = gallery ? (gallery.closest('[id^="comp-"]') || gallery) : null;
+    const container = galleryRoot
+      ? galleryRoot.parentElement
+      : (heading.closest('[id^="comp-"]')?.parentElement || heading.parentElement);
 
-    const container = gallery ? commonAncestor(gallery, heading) : heading.parentElement;
-
-    if (gallery && container) {
-      let galleryRoot = gallery;
-      while (galleryRoot.parentElement && galleryRoot.parentElement !== container) {
-        galleryRoot = galleryRoot.parentElement;
-      }
+    if (galleryRoot && !galleryRoot.contains(heading)) {
       galleryRoot.style.setProperty('display', 'none', 'important');
       ensureHideRule(galleryRoot);
     }
@@ -112,14 +113,8 @@
       g.style.setProperty('display', 'none', 'important');
     });
 
-    /* 2) Cho section tự giãn theo nội dung mới ---------------------- */
-    if (container) {
-      container.style.setProperty('height', 'auto', 'important');
-      container.style.setProperty('grid-template-rows', 'auto', 'important');
-    }
-    section.style.setProperty('height', 'auto', 'important');
-    section.style.setProperty('min-height', '0', 'important');
-    section.style.setProperty('padding-bottom', '50px', 'important');
+    /* 2) Thu gọn khoảng trắng trên/dưới slider ---------------------- */
+    applyLayout(section, container, heading);
 
     /* 3) Host + Shadow DOM ----------------------------------------- */
     const host = document.createElement('div');
@@ -133,7 +128,7 @@
       'width: 100%',
       'min-width: 0',
       'max-width: 100%',
-      'margin: 28px 0 0 0',
+      'margin: 16px 0 0 0',
       'padding: 0',
       'box-sizing: border-box'
     ].join(';');
@@ -336,6 +331,7 @@
 
     viewport.addEventListener('scroll', updateButtons, { passive: true });
     window.addEventListener('resize', updateButtons);
+    viewport.scrollLeft = 0;
     updateButtons();
 
     /* kéo bằng chuột (touch đã có scroll native) */
@@ -409,6 +405,32 @@
     }
   }
 
+  /* Thu gọn khoảng trắng trên/dưới slider + reset lại sau mỗi lần
+     Wix re-render (Wix hay ghi đè height/padding của section). */
+  function applyLayout(section, container, heading) {
+    if (!section) return;
+
+    section.style.setProperty('height', 'auto', 'important');
+    section.style.setProperty('min-height', '0', 'important');
+    section.style.setProperty('padding-top', '28px', 'important');
+    section.style.setProperty('padding-bottom', '28px', 'important');
+
+    const headingBox = heading ? heading.closest('[id^="comp-"]') : null;
+    if (headingBox && headingBox !== container) {
+      headingBox.style.setProperty('margin-top', '0', 'important');
+      headingBox.style.setProperty('margin-bottom', '0', 'important');
+    }
+
+    if (!container) return;
+    container.style.setProperty('height', 'auto', 'important');
+    container.style.setProperty('min-height', '0', 'important');
+    container.style.setProperty('padding', '20px 25px 24px', 'important');
+    container.style.setProperty('grid-template-rows', 'auto auto', 'important');
+    container.style.setProperty('grid-auto-rows', 'auto', 'important');
+    container.style.setProperty('align-content', 'start', 'important');
+    container.style.setProperty('row-gap', '0', 'important');
+  }
+
   /* Kiểm tra định kỳ: host bị Wix xoá thì dựng lại,
      gallery Wix lộ ra thì ẩn lại. */
   function startKeepAlive() {
@@ -426,25 +448,16 @@
       const section = host.closest('section');
       const gallery = (section || document).querySelector('.pro-gallery');
 
-      /* Wix re-render có thể ghi đè lại chiều cao cố định của section */
-      if (section) {
-        section.style.setProperty('height', 'auto', 'important');
-        section.style.setProperty('min-height', '0', 'important');
-        section.style.setProperty('padding-bottom', '50px', 'important');
-      }
-      if (host.parentElement) {
-        host.parentElement.style.setProperty('height', 'auto', 'important');
-        host.parentElement.style.setProperty('grid-template-rows', 'auto', 'important');
-      }
+      /* Wix re-render có thể ghi đè lại chiều cao/padding của section */
+      if (section) applyLayout(section, host.parentElement, findHeading());
 
       if (!gallery) return;
 
       const parent = host.parentElement;
-      let root = gallery;
-      while (root.parentElement && root.parentElement !== parent) {
-        root = root.parentElement;
-      }
-      if (root.parentElement === parent && root !== host) {
+      const root = gallery.closest('[id^="comp-"]') || gallery;
+      const heading = findHeading();
+      if (root.parentElement === parent && root !== host &&
+          !(heading && root.contains(heading))) {
         root.style.setProperty('display', 'none', 'important');
         ensureHideRule(root);
       }
@@ -522,11 +535,13 @@
   }
 
   /* chạy ngay, không đợi event nào */
+  console.info('[clients-grid] Bản cập nhật: ' + UPDATED_AT);
   boot();
 
   /* Gọi lại thủ công nếu site SPA re-render làm mất slider:
      window.AeronClientsGrid.mount()  */
   window.AeronClientsGrid = {
+    version: UPDATED_AT,
     mount() {
       stopWatching();
       document.getElementById(HOST_ID)?.remove();
