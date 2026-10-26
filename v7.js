@@ -14,13 +14,13 @@
  * hoặc paste vào Console / HTML Embed / Velo.
  * Chạy lại nhiều lần được (không tạo bản trùng).
  *
- * CẬP NHẬT LẦN CUỐI: 2026-10-26 15:11
+ * CẬP NHẬT LẦN CUỐI: 2026-10-26 15:17
  * ===================================================================== */
 (() => {
   'use strict';
 
   /* Ngày giờ cập nhật file — xem trong Console để biết đã lấy bản mới chưa */
-  const UPDATED_AT = '2026-10-26 15:11';
+  const UPDATED_AT = '2026-10-26 15:17';
 
   const HOST_ID = 'aeronsolution-clients-grid';
   const STYLE_ID = 'acp-hide-wix-gallery';
@@ -107,14 +107,14 @@
 
     if (galleryRoot && !galleryRoot.contains(heading)) {
       galleryRoot.style.setProperty('display', 'none', 'important');
-      ensureHideRule(galleryRoot);
     }
     section.querySelectorAll('.pro-gallery').forEach((g) => {
       g.style.setProperty('display', 'none', 'important');
+      ensureHideRule(g);
     });
 
     /* 2) Thu gọn khoảng trắng trên/dưới slider ---------------------- */
-    applyLayout(section, container, heading);
+    applyLayout(section, container);
 
     /* 3) Host + Shadow DOM ----------------------------------------- */
     const host = document.createElement('div');
@@ -388,26 +388,24 @@
   let observer = null;
   let keepAliveTimer = null;
 
-  /* Ẩn gallery Wix bằng rule trong <head>: rule này sống sót qua các
-     lần Wix re-render (style inline trên node có thể bị React ghi đè). */
-  function ensureHideRule(root) {
-    if (!root || !root.id) return;
+  /* Ẩn gallery Wix bằng class trên chính .pro-gallery — rule này
+     KHÔNG BAO GIỜ chạm vào heading hay wrapper chứa heading. */
+  const HIDE_CLASS = 'acp-wix-gallery-hidden';
 
-    const sel = '#' + (window.CSS && CSS.escape ? CSS.escape(root.id) : root.id);
+  function ensureHideRule(gallery) {
     let style = document.getElementById(STYLE_ID);
     if (!style) {
       style = document.createElement('style');
       style.id = STYLE_ID;
       (document.head || document.documentElement).appendChild(style);
     }
-    if (!style.textContent.includes(sel)) {
-      style.textContent += sel + '{display:none!important}\n';
-    }
+    style.textContent = '.' + HIDE_CLASS + '{display:none!important}\n';
+    if (gallery) gallery.classList.add(HIDE_CLASS);
   }
 
   /* Thu gọn khoảng trắng trên/dưới slider + reset lại sau mỗi lần
-     Wix re-render (Wix hay ghi đè height/padding của section). */
-  function applyLayout(section, container, heading) {
+     Wix re-render. Không set bất kỳ style nào lên heading. */
+  function applyLayout(section, container) {
     if (!section) return;
 
     section.style.setProperty('height', 'auto', 'important');
@@ -415,16 +413,10 @@
     section.style.setProperty('padding-top', '28px', 'important');
     section.style.setProperty('padding-bottom', '28px', 'important');
 
-    const headingBox = heading ? heading.closest('[id^="comp-"]') : null;
-    if (headingBox && headingBox !== container) {
-      headingBox.style.setProperty('margin-top', '0', 'important');
-      headingBox.style.setProperty('margin-bottom', '0', 'important');
-    }
-
     if (!container) return;
     container.style.setProperty('height', 'auto', 'important');
     container.style.setProperty('min-height', '0', 'important');
-    container.style.setProperty('padding', '20px 25px 24px', 'important');
+    container.style.setProperty('padding', '8px 25px 24px', 'important');
     container.style.setProperty('grid-template-rows', 'auto auto', 'important');
     container.style.setProperty('grid-auto-rows', 'auto', 'important');
     container.style.setProperty('align-content', 'start', 'important');
@@ -449,7 +441,7 @@
       const gallery = (section || document).querySelector('.pro-gallery');
 
       /* Wix re-render có thể ghi đè lại chiều cao/padding của section */
-      if (section) applyLayout(section, host.parentElement, findHeading());
+      if (section) applyLayout(section, host.parentElement);
 
       if (!gallery) return;
 
@@ -459,8 +451,8 @@
       if (root.parentElement === parent && root !== host &&
           !(heading && root.contains(heading))) {
         root.style.setProperty('display', 'none', 'important');
-        ensureHideRule(root);
       }
+      ensureHideRule(gallery);
     }, 1000);
   }
 
@@ -527,11 +519,38 @@
 
   function boot() {
     if (document.getElementById(HOST_ID)) return;
-    if (init()) return;
 
-    console.info('[clients-grid] Script chạy lúc readyState="' +
-      document.readyState + '" — đang chờ DOM/section…');
-    waitAndInit();
+    const go = () => {
+      if (document.getElementById(HOST_ID)) return;
+      if (init()) return;
+
+      console.info('[clients-grid] Script chạy lúc readyState="' +
+        document.readyState + '" — đang chờ DOM/section…');
+      waitAndInit();
+    };
+
+    /* Đợi trang load + Wix hydrate xong rồi mới chèn. Chèn quá sớm
+       (giữa lúc hydration) dễ làm React thay/xoá node của section. */
+    const afterLoad = () => {
+      const run = () => setTimeout(go, 400);
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(run, { timeout: 1500 });
+      } else {
+        run();
+      }
+    };
+
+    const fallback = setTimeout(go, 12000);
+
+    if (document.readyState === 'complete') {
+      clearTimeout(fallback);
+      afterLoad();
+    } else {
+      window.addEventListener('load', () => {
+        clearTimeout(fallback);
+        afterLoad();
+      }, { once: true });
+    }
   }
 
   /* chạy ngay, không đợi event nào */
