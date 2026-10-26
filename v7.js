@@ -14,13 +14,13 @@
  * hoặc paste vào Console / HTML Embed / Velo.
  * Chạy lại nhiều lần được (không tạo bản trùng).
  *
- * CẬP NHẬT LẦN CUỐI: 2026-10-26 15:05
+ * CẬP NHẬT LẦN CUỐI: 2026-10-26 15:11
  * ===================================================================== */
 (() => {
   'use strict';
 
   /* Ngày giờ cập nhật file — xem trong Console để biết đã lấy bản mới chưa */
-  const UPDATED_AT = '2026-10-26 15:05';
+  const UPDATED_AT = '2026-10-26 15:11';
 
   const HOST_ID = 'aeronsolution-clients-grid';
   const STYLE_ID = 'acp-hide-wix-gallery';
